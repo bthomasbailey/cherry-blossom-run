@@ -1,6 +1,5 @@
 
-
-setwd("C:/Users/Tom Bailey/Documents/Training/Data_Science_in_R/Ch2_CherryBlossomRace/Data")
+setwd("C:/MyGitRepos/cherry-blossom-run/Data")
 
 els <- readLines("MenTxt/2012.txt")
 eqIndex <- grep("^===", els)
@@ -41,7 +40,7 @@ selectCols <- function(colNames, headerRow, searchLocs) {
                }
                
                index <- sum(startPos >= searchLocs)
-               c(searchLocs[index] + 1, searchLocs[index + 1] - 1)
+               c(searchLocs[index] + 1, searchLocs[index + 1])
            },
            headerRow = headerRow, searchLocs = searchLocs)
     
@@ -57,3 +56,143 @@ locCols <- selectCols(shortColNames, headerRow, searchLocs)
 Values <- mapply(substr, list(body), start = locCols[1,], stop = locCols[2,])
 class(Values)
 colnames(Values) <- shortColNames
+
+
+extractVariables <- function(file, varNames = c("name", "home", "ag", "gun", "net", "time"),
+                             sex, year) {
+    #Find the index of the row with equal signs
+    eqIndex <- grep("^===", file)
+    
+    #Find the index of the footer row
+    footIndex <- grep("^[[:blank:]]*[#|*]", file)
+    
+    #Find the index of rows that are completely blank
+    blankIndex <- grep("^[[:blank:]]*$", file)
+    
+    #Extract the two key rows and the data (fix men 2006 spacer row)
+    spacerRow <- file[eqIndex]
+    
+    if (sex == "M" & year == 2006){
+        locNetTime <- regexpr("net", headerRow)
+        spacerRow <- paste(substr(spacerRow, 1, locNetTime - 2), 
+                              substr(spacerRow, locNetTime, nchar(spacerRow)), " ")
+    }
+    
+    
+    headerRow <- tolower(file[eqIndex - 1])
+    body <- file[-c(1:eqIndex, footIndex, blankIndex)]
+    
+    #Obtain the starting and ending positions of variables
+    searchLocs <- findColLocs(spacerRow)
+    locCols <- selectCols(varNames, headerRow, searchLocs)
+    
+    Values <- mapply(substr, list(body), start = locCols[1,], stop = locCols[2,])
+    colnames(Values) <- varNames
+    
+    invisible(Values)
+}
+
+
+mfilenames <- paste("MenTxt/", 1999:2012, ".txt", sep="")
+menFiles <- lapply(mfilenames, readLines)
+names(menFiles) <- 1999:2012
+
+
+wfilenames <- paste("WomenTxt/", 1999:2012, ".txt", sep="")
+womenFiles <- lapply(wfilenames, readLines)
+names(womenFiles) <- 1999:2012
+
+
+#menResMat <- lapply(menFiles, extractVariables)
+#womenResMat <- lapply(womenFiles, extractVariables)
+menResMat <- mapply(extractVariables, menFiles, sex = "M", year = 1999:2012)
+womenResMat <- mapply(extractVariables, womenFiles, sex = "W", year = 1999:2012)
+
+sapply(menResMat, nrow)
+
+
+##Check ages
+age <- as.numeric(menResMat$`2012`[, "ag"])
+age <- sapply(menResMat, function(x) as.numeric(x[ , "ag"]))
+boxplot(age, ylab = "Age", xlab = "Year")
+
+sapply(age, function(x) sum(is.na(x)))
+age2001 <- age[["2001"]]
+grep("^===", menFiles[["2001"]])
+
+badAgeIndex = which(is.na(age2001)) + 5
+menFiles[["2001"]][badAgeIndex]
+
+blanks <- grep("^[[:blank:]]*$", menFiles[["2001"]])
+
+which(age2001 < 5)
+menFiles[["2001"]][which(age2001 < 5) + 5]
+
+charTime <- menResMat[["2012"]][, "time"]
+timePieces <- strsplit(charTime, ":")
+timePieces[[1]]
+tail(timePieces, 1)
+
+timePieces <- sapply(timePieces, as.numeric)
+runTime <- sapply(timePieces,
+                  function(x){
+                      if (length(x) == 2) x[1] + x[2]/60
+                      else 60*x[1] + x[2] + x[3]/60
+                  })
+
+summary(runTime)
+
+
+convertTime <- function(charTime){
+    #takes time in h:mm:ss format and converts it to minutes
+    
+    timePieces <- strsplit(charTime, ":")
+    timePieces <- sapply(timePieces, as.numeric)
+    
+    runTime <- sapply(timePieces,
+                      function(x){
+                          if (length(x) == 2) {x[1] + x[2]/60}
+                          else {60*x[1] + x[2] + x[3]/60}
+                      })
+}
+
+createDF <- function(Res, year, sex){
+    #Determine which time to use
+    useTime <- if(!is.na(Res[1, "net"])) {
+        Res[, "net"]
+    } else if(!is.na(Res[1, "gun"])) {
+        Res[, "gun"]
+    } else {
+        Res[, "time"]}
+    
+    #Remove # and * and blanks from time
+    useTime <- gsub("[#\\*[:blank:]]", "", useTime)
+    
+    #Drop rows with no time
+    Res <- Res[useTime != "", ]
+    
+    runTime <- convertTime(useTime[useTime != ""])
+    
+    Results <- data.frame(year = rep(year, nrow(Res)),
+                          sex = rep(sex, nrow(Res)),
+                          name = Res[ , "name"],
+                          home = Res[ , "home"],
+                          age = as.numeric(Res[ , "ag"]), 
+                          runTime = runTime,
+                          stringsAsFactors = F)
+    
+    invisible(Results)
+                        
+}
+
+
+menDF <- mapply(createDF, menResMat, year = 1999:2012, sex = "M", SIMPLIFY = F)
+
+#check NA values for runTime
+sapply(menDF, function(x) sum(is.na(x$runTime)))
+
+cbMen <- do.call(rbind, menDF)
+save(cbMen, file = "cbMen.rda")
+
+
+

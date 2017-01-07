@@ -1,6 +1,6 @@
 
 
-setwd("C:/Users/Tom Bailey/Documents/Training/Data_Science_in_R/Ch2_CherryBlossomRace/Data")
+setwd("C:/MyGitRepos/cherry-blossom-run/Data")
 require(stringr)
 
 extractSingleItem <- function(strLine, pattern){
@@ -118,7 +118,7 @@ extractResTable <- function(url, year = 1999, men = T, file = NULL) {
     if (men == T) {
         subDir <- "MenTxt"
     } else {
-        subDir <- "WomanTxt"
+        subDir <- "WomenTxt"
     }
     
     if (!(is.null(file))) {
@@ -171,13 +171,4 @@ sapply(womTables, length)
 
 save(menTables, file = "CBMenTextTables.Rda")
 save(womTables, file = "CBWomenTextTables.Rda")
-
-
-
-# ubase <- "http://www.cherryblossom.org/"
-# url <- paste(ubase, "results/2012/2012cucb10m-m.htm", sep="")
-# doc <- htmlParse(url)
-# preNode <- getNodeSet(doc, "//pre")
-# txt <- xmlValue(preNode[[1]])
-# els <- strsplit(txt, "\r\n")[[1]]
 
