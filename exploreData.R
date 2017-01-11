@@ -93,3 +93,40 @@ lines(x = age20to80, y = menRes.lo.pr,
 legend("topleft", col = c("purple", "green"),
        lty = c(1, 2), lwd = 3,
        legend = c("Piecewise Linear", "Loess Curve"), bty = "n")
+
+
+###Compare 1999 to 2012 races
+summary(cbMenSub$runTime[cbMenSub$year == 1999])
+summary(cbMenSub$runTime[cbMenSub$year == 2012])
+
+#compare ages from each race
+age1999 <- cbMenSub[cbMenSub$year == 1999, "age"]
+age2012 <- cbMenSub[cbMenSub$year == 2012, "age"]
+
+#plot density curves for two sets of ages
+plot(density(age1999, na.rm = T),
+     ylim = c(0, 0.05), col = "purple",
+     lwd = 3, xlab = "Age(years)", main = "")
+
+lines(density(age2012, na.rm = T),
+      lwd = 3, lty = 2, col = "green")
+
+legend("topright", col = c("purple", "green"), lty = 1:2, lwd = 3,
+       legend = c("1999", "2012"), bty = "n")
+
+#Create non-parametric smooth curve of time vs. age for each race, 1999 and 2012
+mR.lo99 <- loess(runTime ~ age, cbMenSub[cbMenSub$year == 1999, ])
+mR.lo.pr99 <- predict(mR.lo99, data.frame(age = age20to80))
+
+mR.lo12 <- loess(runTime ~ age, cbMenSub[cbMenSub$year == 2012, ])
+mR.lo.pr12 <- predict(mR.lo12, data.frame(age = age20to80))
+
+plot(mR.lo.pr99 ~ age20to80,
+     type = "l", col = "purple", lwd = 3,
+     xlab = "Age (years)", ylab = "Fitted Run Time (minutes)")
+
+lines(x = age20to80, y = mR.lo.pr12,
+      col = "green", lty = 2, lwd = 3)
+
+legend("topleft", col = c("purple", "green"), lty = 1:2, lwd = 3,
+       legend = c("1999", "2012"), bty = "n")
