@@ -3,6 +3,25 @@
 setwd("C:/MyGitRepos/cherry-blossom-run/Data")
 
 
+trimBlanks <- function(charVector){
+  nameClean <- gsub("^[[:blank:]]+", "", charVector)
+  nameClean <- gsub("[[:blank:]]+$", "", nameClean)
+  nameClean <- gsub("[[:blank:]]+", " ", nameClean)
+}
+
+convertTime <- function(charTime){
+  #takes time in h:mm:ss format and converts it to minutes
+  
+  timePieces <- strsplit(charTime, ":")
+  timePieces <- sapply(timePieces, as.numeric)
+  
+  runTime <- sapply(timePieces,
+                    function(x){
+                      if (length(x) == 2) {x[1] + x[2]/60}
+                      else {60*x[1] + x[2] + x[3]/60}
+                    })
+}
+
 read_txt_fwf <- function(M = T, yr, widths, 
                          colNames = c("name", "age", "home", "gun", "net"), 
                          skipRows){
@@ -27,10 +46,14 @@ read_txt_fwf <- function(M = T, yr, widths,
   df <- df[, c("year", "name", "age", "home", useTime)]
   names(df)[names(df) == "net"] <- "time"
   
-  df$name <- as.character(df$name)
+  df$name <- tolower(gsub("[,.]", "", trimBlanks(as.character(df$name))))
   df$age <- as.integer(df$age)
-  df$home <- as.character(df$home)
-  df$time <- as.character(df$time)
+  df$home <- tolower(gsub("[,.`]", "", trimBlanks(as.character(df$home))))
+
+  #Remove # and * and blanks from time, drop records w/o time, and then convert to minutes
+  df$time <- gsub("[#\\*[:blank:]]", "", as.character(df$time))
+  df <- df[df$time != "", ]
+  df$time <- convertTime(df$time)
   
   return(df)
   
