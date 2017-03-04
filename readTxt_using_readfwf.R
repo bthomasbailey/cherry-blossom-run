@@ -32,8 +32,9 @@ read_txt_fwf <- function(M = T, yr, widths,
   df <- read.fwf(file, widths = widths, col.names = colNames, 
                  skip = skipRows, comment.char = "")
   
-  #add column to keep track of year
+  #add column to keep track of year and sex
   df$year <- yr
+  df$sex <- ifelse(M, "M", "W")
   
   #keep only one time column - first look for net, then gun, then time
   useTime <- if("net" %in% colNames) {
@@ -43,17 +44,20 @@ read_txt_fwf <- function(M = T, yr, widths,
   } else {
     "time"}
   
-  df <- df[, c("year", "name", "age", "home", useTime)]
-  names(df)[names(df) == "net"] <- "time"
+  df <- df[, c("year", "sex", "name", "age", "home", useTime)]
+  names(df)[names(df) == useTime] <- "runTime"
   
-  df$name <- tolower(gsub("[,.]", "", trimBlanks(as.character(df$name))))
+  df$name <- gsub("[,.]", "", trimBlanks(as.character(df$name)))
   df$age <- as.integer(df$age)
-  df$home <- tolower(gsub("[,.`]", "", trimBlanks(as.character(df$home))))
-
+  df$home <- gsub("[,.`]", "", trimBlanks(as.character(df$home)))
+  
   #Remove # and * and blanks from time, drop records w/o time, and then convert to minutes
-  df$time <- gsub("[#\\*[:blank:]]", "", as.character(df$time))
-  df <- df[df$time != "", ]
-  df$time <- convertTime(df$time)
+  df$runTime <- gsub("[#\\*[:blank:]]", "", as.character(df$runTime))
+  df <- df[df$runTime != "", ]
+  df$runTime <- convertTime(df$runTime)
+  
+  #Remove rows with no name
+  df <- df[!is.na(df$name), ]
   
   return(df)
   

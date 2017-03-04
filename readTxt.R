@@ -184,18 +184,32 @@ ageSevenIndex <- which(age2009 == 7) + grep("^===", womenFiles[["2009"]])
 womenFiles$`2009`[ageSevenIndex]
 
 
-
 convertTime <- function(charTime){
     #takes time in h:mm:ss format and converts it to minutes
+    #if time is invalid, it forces it to NA
     
     timePieces <- strsplit(charTime, ":")
     timePieces <- sapply(timePieces, as.numeric)
     
-    runTime <- sapply(timePieces,
-                      function(x){
-                          if (length(x) == 2) {x[1] + x[2]/60}
-                          else {60*x[1] + x[2] + x[3]/60}
-                      })
+    #Fix to account for times that are of incorrect format, e.g. "1:30:" 
+    nbrColons <- lapply(charTime, 
+                       function(x) {
+                         length(gregexpr(":", x)[[1]])
+                       })
+    
+    runTime <- mapply(function(x, y, z){
+                  nbrTimePieces <- length(x)
+                  if (nbrTimePieces <= y) {
+                      return(NA)}
+                  else if (nbrTimePieces == 2) {
+                      return(x[1] + x[2]/60)}
+                  else {
+                      return(60*x[1] + x[2] + x[3]/60)}
+               }, 
+               timePieces, 
+               nbrColons,
+               charTime)
+    
 }
 
 createDF <- function(Res, year, sex){
@@ -214,6 +228,17 @@ createDF <- function(Res, year, sex){
     Res <- Res[useTime != "", ]
     
     runTime <- convertTime(useTime[useTime != ""])
+    
+    #convertTime returns NA for invalid run times; drop these records and print
+    #message about record(s) dropped
+    if(sum(is.na(runTime)) > 0){
+      print(paste("Dropping the following records in year", year, "for", 
+                  ifelse(sex == "M", "Men", "Women"), 
+                  "due to invalid times", sep = " "))
+      
+      print(Res[is.na(runTime), ])     
+    }
+
     
     Results <- data.frame(year = rep(year, nrow(Res)),
                           sex = rep(sex, nrow(Res)),
